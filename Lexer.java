@@ -8,15 +8,18 @@ public class Lexer {
     private String line = "";
     private int lineno = 0;
     private int col = 1;
-    private final String letters = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private final String letters = "abcdefghijklmnopqrstuvwxyz"
+            + "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private final String digits = "0123456789";
     private final char eolnCh = '\n';
     private final char eofCh = '\004';
 
+
     public Lexer(String fileName) { // source filename
         try {
             input = new BufferedReader(new FileReader(fileName));
-        } catch (FileNotFoundException e) {
+        }
+        catch (FileNotFoundException e) {
             System.out.println("File not found: " + fileName);
             System.exit(1);
         }
@@ -45,6 +48,7 @@ public class Lexer {
         return line.charAt(col);
     }
 
+
     public Token next() { // Return next token
         do {
             if (isLetter(ch)) { // ident or keyword
@@ -52,90 +56,111 @@ public class Lexer {
                 return Token.keyword(spelling);
             } else if (isDigit(ch)) { // int or float literal
                 String number = concat(digits);
-                if (ch != '.') // int Literal
+                if (ch != '.')  // int Literal
                     return Token.mkIntLiteral(number);
                 number += concat(digits);
                 return Token.mkFloatLiteral(number);
-            } else
-                switch (ch) {
-                    case ' ':
-                    case '\t':
-                    case '\r':
-                    case eolnCh:
+            } else switch (ch) {
+                case ' ':
+                case '\t':
+                case '\r':
+                case eolnCh:
+                    ch = nextChar();
+                    break;
+
+                case '/':  // divide or comment
+                    ch = nextChar();
+                    if (ch != '/') return Token.divideTok;
+                    // comment
+                    do {
                         ch = nextChar();
-                        break;
+                    } while (ch != eolnCh);
+                    ch = nextChar();
+                    break;
 
-                    case '/': // divide or comment
-                        ch = nextChar();
-                        if (ch != '/')
-                            return Token.divideTok;
-                        // comment
-                        do {
-                            ch = nextChar();
-                        } while (ch != eolnCh);
-                        ch = nextChar();
-                        break;
+                case '\'':  // char literal
+                    char ch1 = nextChar();
+                    nextChar(); // get '
+                    ch = nextChar();
+                    return Token.mkCharLiteral("" + ch1);
 
-                    case '\'': // char literal
-                        char ch1 = nextChar();
-                        nextChar(); // get '
-                        ch = nextChar();
-                        return Token.mkCharLiteral("" + ch1);
+                case eofCh:
+                    return Token.eofTok;
 
-                    case eofCh:
-                        return Token.eofTok;
+                case '+':
+                    ch = nextChar();
+                    return Token.plusTok;
 
-                    case '+':
-                        ch = nextChar();
-                        return Token.plusTok;
+                // - * ( ) { } ; ,  student exercise
+                case '-':
+                    ch = nextChar();
+                    return Token.minusTok;
 
-                    // - * ( ) { } ; , student exercise
-                    case '-':
-                        ch = nextChar();
-                        return Token.minusTok;
+                case '*':
+                    ch = nextChar();
+                    return Token.multiplyTok;
 
-                    case '*':
-                        ch = nextChar();
-                        return Token.multiplyTok;
+                case '(':
+                    ch = nextChar();
+                    return Token.leftParenTok;
 
-                    case '(':
-                        ch = nextChar();
-                        return Token.leftParenTok;
-                    case ')':
-                        ch = nextChar();
-                        return Token.rightParenTok;
+                case ')':
+                    ch = nextChar();
+                    return Token.rightParenTok;
 
-                    case '&':
-                        check('&');
-                        return Token.andTok;
-                    case '|':
-                        check('|');
-                        return Token.orTok;
+                case '{':
+                    ch = nextChar();
+                    return Token.leftBraceTok;
 
-                    case '=':
-                        return chkOpt('=', Token.assignTok, Token.eqeqTok);
-                    // < > ! student exercise
-                    case '<':
-                        return chkOpt('=', Token.ltTok, Token.lteqTok);
+                case '}':
+                    ch = nextChar();
+                    return Token.rightBraceTok;
 
-                    case '>':
-                        return chkOpt('=', Token.gtTok, Token.gteqTok);
+                case ';':
+                    ch = nextChar();
+                    return Token.semicolonTok;
 
-                    case '!':
-                        return chkOpt('=', Token.notTok, Token.noteqTok);
+                case ',':
+                    ch = nextChar();
+                    return Token.commaTok;
 
-                    default:
-                        error("Illegal character " + ch);
-                } // switch
+
+                case '&':
+                    check('&');
+                    return Token.andTok;
+                case '|':
+                    check('|');
+                    return Token.orTok;
+
+                case '=':
+                    return chkOpt('=', Token.assignTok,
+                            Token.eqeqTok);
+
+                // < > !  student exercise
+                case '<':
+                    return chkOpt('=', Token.ltTok, Token.lteqTok);
+
+                case '>':
+                    return chkOpt('=', Token.gtTok, Token.gteqTok);
+
+                case '!':
+                    return chkOpt('=', Token.notTok, Token.noteqTok);
+
+
+                default:
+                    error("Illegal character " + ch);
+            } // switch
         } while (true);
     } // next
+
 
     private boolean isLetter(char c) {
         return (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z');
     }
 
+    // student exercise
     private boolean isDigit(char c) {
-        return (c >= '0' && c <= '9'); // student exercise
+        return (c >= '0' && c <= '9');
     }
 
     private void check(char c) {
@@ -145,16 +170,15 @@ public class Lexer {
         ch = nextChar();
     }
 
+    // student exercise
     private Token chkOpt(char c, Token one, Token two) {
+        ch = nextChar();
         Token tok;
+        if (ch != c) tok = one;
+        else tok = two;
         ch = nextChar();
-        if (ch != c) {
-            tok = one;
-        } else {
-            tok = two;
-        }
-        ch = nextChar();
-        return tok; // student exercise
+
+        return tok;
     }
 
     private String concat(String set) {
@@ -182,3 +206,4 @@ public class Lexer {
     } // main
 
 }
+
